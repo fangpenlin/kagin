@@ -47,20 +47,39 @@ class HashFile(object):
                     break
                 hash.update(chunk)
         return hash.hexdigest()
+    
+    def unify_path(self, path):
+        """Ensure the path to be unix-style path
+        
+        """
+        path = path.replace('\\', '/')
+        if path.startswith('/'):
+            path = path[1:]
+        return path
             
     def run(self):
         """Run file hashing, generate filename map and return
         
         """
         file_map = {}
-        for _, _, filenames in os.walk(self.input_dir):
+        for root, _, filenames in os.walk(self.input_dir):
             for filename in filenames:
+                file_path = os.path.join(root, filename)
                 # TODO: exclude files here
-                hash = self.compute_hash(filename)
-                _, ext = os.path.splitext(filename)
-                output_filename = os.path.join(self.output_dir, hash + ext)
-                shutil.copy(filename, output_filename)
-                file_map[filename] = output_filename
+                
+                # compute hash value of file here
+                hash = self.compute_hash(file_path)
+                _, ext = os.path.splitext(file_path)
+                output_name = os.path.join(self.output_dir, hash + ext)
+                
+                # copy file
+                shutil.copy(file_path, output_name)
+                # make relative path
+                input_path = os.path.relpath(file_path, self.input_dir)
+                input_path = self.unify_path(input_path)
+                output_path = os.path.relpath(output_name, self.output_dir)
+                output_path = self.unify_path(output_path)
+                file_map[input_path] = output_path
         return file_map
                 
 if __name__ == '__main__':
