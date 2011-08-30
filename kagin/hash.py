@@ -2,6 +2,19 @@ import os
 import logging
 import hashlib
 import shutil
+import urlparse
+
+from kagin.link_css import replace_css_links
+
+def url_path(path, base):
+    """Ensure the path to be URL-style path
+    
+    """
+    relpath = os.path.relpath(path, base)
+    relpath = relpath.replace('\\', '/')
+    if path.endswith('/') or path.endswith('\\'):
+        return relpath + '/'
+    return relpath
 
 class HashFile(object):
     """This object hashes content files and output files with hash file name,
@@ -48,17 +61,17 @@ class HashFile(object):
                 hash.update(chunk)
         return hash.hexdigest()
     
-    def unify_path(self, path):
-        """Ensure the path to be unix-style path
+    def url_path(self, path):
+        """Ensure the path to be URL-style path
         
         """
         path = path.replace('\\', '/')
         if path.startswith('/'):
             path = path[1:]
         return path
-            
-    def run(self):
-        """Run file hashing, generate filename map and return
+    
+    def run_hashing(self):
+        """Run hashing process
         
         """
         file_map = {}
@@ -76,12 +89,57 @@ class HashFile(object):
                 shutil.copy(file_path, output_name)
                 # make relative path
                 input_path = os.path.relpath(file_path, self.input_dir)
-                input_path = self.unify_path(input_path)
+                input_path = self.url_path(input_path)
                 output_path = os.path.relpath(output_name, self.output_dir)
-                output_path = self.unify_path(output_path)
+                output_path = self.url_path(output_path)
                 file_map[input_path] = output_path
         return file_map
+        
+    def run_linking(self, file_map, url_prefix):
+        """Run linking process
+        
+        """
+        for root, _, filenames in os.walk(self.input_dir):
+            for filename in filenames:
+                file_path = os.path.join(root, filename)
+                _, ext = os.path.splitext(file_path)
+                if ext.lower() != '.css':
+                    continue
+                
+                # directory path of CSS file
+                css_dir = os.path.dirname(file_path)
+                if css_dir:
+                    css_dir = css_dir + '/'
+                input_url = url_path(file_path, self.input_dir)
+                
+                def map_func(url):
+                    parsed = urlparse.urlparse(url)
+                    # we don't want to map absolute URLs
+                    if parsed.scheme:
+                        return
+                    if parsed.path.startswith('/'):
+                        return
+                    
+                    # get css path in file system
+                    css_path = os.path.join(css_dir, url)
+                    css_path = os.path.normpath(css_path)
+                    css_url = url_path(css_path, self.input_dir)
+                    new_url = file_map.get(css_url)
+                    if new_url is None:
+                        return
+                    return urlparse.urljoin(url_prefix, new_url)
+                
+                # output filename
+                output_filename = file_map.get(self.url_path(input_url))
+                output_filename = os.path.join(self.output_dir, output_filename)
+                with open(output_filename, 'rt') as file:
+                    css_content = file.read()
+                output = replace_css_links(css_content, map_func)
+                with open(output_filename, 'wt') as file:
+                    file.write(output)
                 
 if __name__ == '__main__':
-    h = HashFile('.', '.')
-    print h.run()
+    logging.basicConfig(level=logging.INFO)
+    h = HashFile('..\\input', '..\\output')
+    file_map = h.run_hashing()
+    h.run_linking(file_map, 'http://cdn.s3.now.in')
