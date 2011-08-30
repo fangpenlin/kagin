@@ -31,7 +31,7 @@ class HashFile(object):
         logger=None
     ):
         self.logger = logger
-        if self.logger is not None:
+        if self.logger is None:
             self.logger = logging.getLogger(__name__)
         #: path to input directory
         self.input_dir = input_dir
@@ -61,15 +61,6 @@ class HashFile(object):
                 hash.update(chunk)
         return hash.hexdigest()
     
-    def url_path(self, path):
-        """Ensure the path to be URL-style path
-        
-        """
-        path = path.replace('\\', '/')
-        if path.startswith('/'):
-            path = path[1:]
-        return path
-    
     def run_hashing(self):
         """Run hashing process
         
@@ -88,11 +79,10 @@ class HashFile(object):
                 # copy file
                 shutil.copy(file_path, output_name)
                 # make relative path
-                input_path = os.path.relpath(file_path, self.input_dir)
-                input_path = self.url_path(input_path)
-                output_path = os.path.relpath(output_name, self.output_dir)
-                output_path = self.url_path(output_path)
+                input_path = url_path(file_path, self.input_dir)
+                output_path = url_path(output_name, self.output_dir)
                 file_map[input_path] = output_path
+                self.logger.info('Output %s as %s', input_path, output_path)
         return file_map
         
     def run_linking(self, file_map, url_prefix):
@@ -120,7 +110,7 @@ class HashFile(object):
                     if parsed.path.startswith('/'):
                         return
                     
-                    # get css path in file system
+                    # get CSS path in file system
                     css_path = os.path.join(css_dir, url)
                     css_path = os.path.normpath(css_path)
                     css_url = url_path(css_path, self.input_dir)
@@ -130,7 +120,7 @@ class HashFile(object):
                     return urlparse.urljoin(url_prefix, new_url)
                 
                 # output filename
-                output_filename = file_map.get(self.url_path(input_url))
+                output_filename = file_map.get(input_url)
                 output_filename = os.path.join(self.output_dir, output_filename)
                 with open(output_filename, 'rt') as file:
                     css_content = file.read()

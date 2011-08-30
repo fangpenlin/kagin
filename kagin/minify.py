@@ -6,11 +6,13 @@ class FileConfig(object):
     """Group of files to be minified and compacted together
     
     """
-    def __init__(self, logger=None):
+    def __init__(self, input_dir, logger=None):
         self.logger = logger
         if self.logger is None:
             self.logger = logging.getLogger(__name__)
             
+        #: input files directory
+        self.input_dir = input_dir
         #: group of files
         self.groups = {}
         #: map from filename to group name
@@ -41,9 +43,6 @@ class Compressor(object):
         self.logger = logger
         if self.logger is None:
             self.logger = logging.getLogger(__name__)
-            
-        # make sure java is installed
-        subprocess.check_output(['java', '-version'])
     
     def _get_yui_compressor(self):
         """Get path of yui compressor
@@ -78,4 +77,6 @@ class Builder(object):
         compressor = Compressor()
         for name, filenames in file_config.groups.iteritems():
             output_filename = os.path.join(self.output_dir, name + self.ext)
-            compressor.minify(filenames, output_filename)
+            input_files = [os.path.join(file_config.input_dir, name) 
+                           for name in filenames]
+            compressor.minify(input_files, output_filename)
