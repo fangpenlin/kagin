@@ -70,10 +70,9 @@ class KarginManager(object):
                 shutil.copy(file_path, dest_path)
         
     def do_minify(self): 
-        js_builder = Builder(self.minify_dir, '.minify.js')
-        css_builder = Builder(self.minify_dir, '.minify.css')
-        js_builder.build(self.js_config)
-        css_builder.build(self.css_config)
+        builder = Builder(self.input_dir, self.minify_dir)
+        builder.build(self.js_config, '.minify.js')
+        builder.build(self.css_config, '.minify.css')
         
     def do_hash(self):
         self.file_map = self.hash_file.run_hashing()

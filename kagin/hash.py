@@ -5,16 +5,7 @@ import shutil
 import urlparse
 
 from kagin.link_css import replace_css_links
-
-def url_path(path, base):
-    """Ensure the path to be URL-style path
-    
-    """
-    relpath = os.path.relpath(path, base)
-    relpath = relpath.replace('\\', '/')
-    if path.endswith('/') or path.endswith('\\'):
-        return relpath + '/'
-    return relpath
+from kagin.utils import url_path
 
 class HashFile(object):
     """This object hashes content files and output files with hash file name,
@@ -124,7 +115,7 @@ class HashFile(object):
                 output_filename = os.path.join(self.output_dir, output_filename)
                 with open(output_filename, 'rt') as file:
                     css_content = file.read()
-                output = replace_css_links(css_content, map_func)
+                output = replace_css_links(css_content, map_func, self.logger)
                 with open(output_filename, 'wt') as file:
                     file.write(output)
                 
