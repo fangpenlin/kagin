@@ -30,8 +30,20 @@ class TestLinkFile(unittest.TestCase):
             """html { background-image: url(new-image01.jpg); }""",
         )
         test_replace(
+            """html { background-image: url (test-image01.jpg); }""",
+            """html { background-image: url (new-image01.jpg); }""",
+        )
+        test_replace(
+            """html { background-image: url ( test-image01.jpg ); }""",
+            """html { background-image: url ( new-image01.jpg ); }""",
+        )
+        test_replace(
             """html { background-image: url('test-image02.png'); }""",
             """html { background-image: url('new-image02.png'); }""",
+        )
+        test_replace(
+            """html { background-image: url(  'test-image02.png'  ); }""",
+            """html { background-image: url(  'new-image02.png'  ); }""",
         )
         test_replace(
             """html { background-image: url("test-image03.gif"); }""",

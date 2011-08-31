@@ -9,7 +9,7 @@ def replace_css_links(content, map_func, logger=None):
         logger = logging.getLogger(__name__)
     url_pattern = '(?P<url>[a-zA-Z0-9\-\./_]+)'
     pattern = re.compile(
-        r"""url\(\s*['"]?""" + url_pattern + r"""['"]?\s*\)""", 
+        r"""url\s*\(\s*['"]?""" + url_pattern + r"""['"]?\s*\)""", 
         flags=re.I | re.M
     )
     # result of all replaced lines

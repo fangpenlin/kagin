@@ -13,7 +13,7 @@ class TestHashFile(unittest.TestCase):
         return HashFile(*args, **kwargs)
     
     def test_url_path(self):
-        from kagin.hash import url_path
+        from kagin.utils import url_path
         
         def assert_url_path(path, base, output):
             self.assertEqual(url_path(path, base), output) 
