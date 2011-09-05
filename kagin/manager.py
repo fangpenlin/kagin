@@ -7,7 +7,7 @@ from kagin.minify import FileConfig, Builder
 from kagin.hash import HashFile
 from storage import S3Storage
 
-class KarginManager(object):
+class KaginManager(object):
     def __init__(self, config, logger=None):
         self.logger = logger
         if self.logger is None:
