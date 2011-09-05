@@ -95,8 +95,11 @@ class KaginManager(object):
         builder.build(self.css_config, self.mini_css_ext)
         
     def do_hash(self):
+        route_func = lambda name: name
+        if self.config.get('absolute_hashed_url', False):
+            route_func = self.route_hashed_url
         self.file_map = self.hash_file.run_hashing()
-        self.hash_file.run_linking(self.file_map, self.route_hashed_url)
+        self.hash_file.run_linking(self.file_map, route_func)
         
     def route_hashed_url(self, name, https=False):
         """Generate URL for hashed filename in storage
