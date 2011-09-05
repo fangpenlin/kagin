@@ -5,7 +5,11 @@ from setuptools import setup, find_packages
 
 extra = {}
 
-setup(name='kagin',
+version = '0.1'
+
+setup(
+    name='kagin',
+    version=version,
     packages=find_packages(),
     install_requires=[
     ], **extra

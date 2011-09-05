@@ -41,6 +41,8 @@ class KaginManager(object):
         self.prepare_dir(self.hash_input_dir)
         self.prepare_dir(self.hash_output_dir)
         
+        self.mini_js_ext = '.mini.js'
+        self.mini_css_ext = '.mini.css'
         # init JS groups
         self.js_config = FileConfig(self.input_dir)
         for group in self.config['js_groups']:
@@ -93,8 +95,8 @@ class KaginManager(object):
         
     def do_minify(self): 
         builder = Builder(self.input_dir, self.minify_dir)
-        builder.build(self.js_config, '.minify.js')
-        builder.build(self.css_config, '.minify.css')
+        builder.build(self.js_config, self.mini_js_ext)
+        builder.build(self.css_config, self.mini_css_ext)
         
     def do_hash(self):
         self.file_map = self.hash_file.run_hashing()
@@ -114,6 +116,22 @@ class KaginManager(object):
         if not hashed:
             return
         return self.route_hashed_url(hashed)
+    
+    def get_js_group_urls(self, filenames):
+        """Get minfiy group URLs
+        
+        """
+        minified = self.js_config.include_files(filenames)
+        minified = [name + self.mini_js_ext for name in minified]
+        return map(self.route_rel_url, minified)
+    
+    def get_css_group_urls(self, filenames):
+        """Get minfiy group URLs
+        
+        """
+        minified = self.css_config.include_files(filenames)
+        minified = [name + self.mini_css_ext for name in minified]
+        return map(self.route_rel_url, minified)
     
     def build(self):
         """Perform processes
