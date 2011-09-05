@@ -1,9 +1,11 @@
 import os
 import logging
 import shutil
+import json
 
 from kagin.minify import FileConfig, Builder
 from kagin.hash import HashFile
+from storage import S3Storage
 
 class KarginManager(object):
     def __init__(self, config, logger=None):
@@ -16,9 +18,21 @@ class KarginManager(object):
         self.init()
         
     def init(self):
+        self.read_file_map()
+        
         self.input_dir = self.config['input_dir']
         self.output_dir = self.config['output_dir']
-        self.url_prefix = self.config['storage']['url_prefix']
+        
+        s_cfg = self.config['storage']
+        self.storage = S3Storage(
+            url_prefix=s_cfg['url_prefix'],
+            bucket_name=s_cfg['bucket_name'],
+            access_key=s_cfg['access_key'],
+            secret_key=s_cfg['secret_key']
+        )
+        
+        # read file map
+        self.file_map
         
         self.minify_dir = os.path.join(self.output_dir, 'minify')
         self.hash_input_dir = os.path.join(self.output_dir, 'hash_input')
@@ -42,6 +56,14 @@ class KarginManager(object):
             self.css_config.add_group(name, files)
             
         self.hash_file = HashFile(self.hash_input_dir, self.hash_output_dir)
+        
+    def read_file_map(self):
+        self.file_map = {}
+        if not os.path.exists(self.config['file_map']):
+            return
+        with open(self.config['file_map'], 'rt') as file:
+            content = file.read()
+        self.file_map = json.loads(content)
         
     def prepare_dir(self, path):
         """Remove and make a director
@@ -76,14 +98,27 @@ class KarginManager(object):
         
     def do_hash(self):
         self.file_map = self.hash_file.run_hashing()
-        self.hash_file.run_linking(self.file_map, self.url_prefix)
+        self.hash_file.run_linking(self.file_map, self.route_hashed_url)
         
+    def route_hashed_url(self, name):
+        """Generate URL for hashed filename in storage
+        
+        """
+        return self.storage.route_url(name)
+    
+    def route_rel_url(self, path):
+        """Generate URL for relative URL in storage  
+        
+        """
+        hashed = self.file_map.get(path)
+        if not hashed:
+            return
+        return self.route_hashed_url(hashed)
+    
     def build(self):
         """Perform processes
         
         """
-        import json
-        
         self.do_minify()
         self.copy_files(self.input_dir, self.hash_input_dir)
         self.copy_files(self.minify_dir, self.hash_input_dir)
@@ -91,28 +126,24 @@ class KarginManager(object):
         
         with open(self.config['file_map'], 'wt') as file:
             json.dump(self.file_map, file)
-        
-if __name__ == '__main__':
-    logging.basicConfig(level=logging.DEBUG)
-    cfg = dict(
-        input_dir='public',
-        output_dir='output',
-        file_map='file_map.json',
-        js_groups=[
-            dict(name='testjs', files=[
-                'javascripts/chat.js',
-                'javascripts/jquery.js'
-            ])
-        ],
-        css_groups=[
-            dict(name='testcss', files=[
-                'css/candy.css',
-                'css/radio.css'
-            ])                    
-        ],
-        storage=dict(
-            url_prefix='http://cdn.s3.now.in'
-        )
-    )
-    m = KarginManager(cfg)
-    m.build()
+            
+        self.logger.info('Finish building.')
+            
+    def upload(self, overwire_css=True):
+        self.logger.info('Getting name list from storage ...')
+        names = self.storage.get_names()
+        self.logger.info('Got %s file names', len(names))
+        self.logger.debug('Names: %r', names)
+        for root, _, filenames in os.walk(self.hash_output_dir):
+            for filename in filenames:
+                _, ext = os.path.splitext(filename)
+                force_upload = False
+                if ext.lower() == '.css' and overwire_css:
+                    force_upload = True
+                if filename in names and not force_upload:
+                    self.logger.info('%s already exists, skipped', filename)
+                    continue
+                file_path = os.path.join(root, filename)
+                self.logger.info('Uploading %s ...', filename)
+                self.storage.upload_file(filename, file_path)
+        self.logger.info('Finish uploading.')

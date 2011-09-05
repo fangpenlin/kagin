@@ -76,7 +76,7 @@ class HashFile(object):
                 self.logger.info('Output %s as %s', input_path, output_path)
         return file_map
         
-    def run_linking(self, file_map, url_prefix):
+    def run_linking(self, file_map, route_url):
         """Run linking process
         
         """
@@ -108,7 +108,7 @@ class HashFile(object):
                     new_url = file_map.get(css_url)
                     if new_url is None:
                         return
-                    return urlparse.urljoin(url_prefix, new_url)
+                    return route_url(new_url)
                 
                 # output filename
                 output_filename = file_map.get(input_url)
