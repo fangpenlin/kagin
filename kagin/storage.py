@@ -1,4 +1,5 @@
 import urlparse
+import logging
 
 from boto.s3.connection import S3Connection
 from boto.s3.key import Key
@@ -8,14 +9,38 @@ class S3Storage(object):
     
     """
     
-    def __init__(self, url_prefix, bucket_name, access_key, secret_key):
+    def __init__(
+        self, 
+        url_prefix, 
+        bucket_name, 
+        access_key, 
+        secret_key, 
+        default_headers=None,
+        logger=None
+    ):
+        self.logger = logger
+        if self.logger is None:
+            self.logger = logging.getLogger(__name__)
         # TODO: add location support here
         self.url_prefix = url_prefix
         self.access_key= access_key
         self.secret_key= secret_key
         self.bucket_name= bucket_name
-        self.conn = S3Connection(self.access_key, self.secret_key)
-        self.bucket = self.conn.create_bucket(self.bucket_name)
+        self.default_headers = default_headers
+        
+    @property
+    def conn(self):
+        if hasattr(self, '_conn'):
+            return self._conn
+        self._conn = S3Connection(self.access_key, self.secret_key)
+        return self._conn
+    
+    @property
+    def bucket(self):
+        if hasattr(self, '_bucket'):
+            return self._bucket
+        self._bucket = self.conn.create_bucket(self.bucket_name)
+        return self._bucket
         
     def route_url(self, name):
         """Get URL of object in storage by name
@@ -34,22 +59,47 @@ class S3Storage(object):
         
         """
         return [key.name for key in self.bucket.get_all_keys()]
+    
+    def _upload_args(
+        self, 
+        content_type=None,
+        cache_control=None,
+        expires=None, 
+        reduced_redundancy=True
+    ):
+        import datetime
+        import email
+        import time
         
-    def upload(self, name, data, reduced_redundancy=True):
+        headers = self.default_headers or {}
+        headers = headers.copy()
+        if expires:
+            due = (datetime.datetime.now() + expires).timetuple()
+            headers['Expires'] = \
+                '%s GMT' % email.Utils.formatdate(time.mktime(due))
+        if content_type:
+            headers['Content-Type'] = content_type
+        if cache_control:
+            headers['Cache-Control'] = cache_control
+        return dict(headers=headers, reduced_redundancy=reduced_redundancy)
+        
+    def upload(self, name, data, **kwargs):
         """Upload data
         
         """
         key = Key(self.bucket, name)
-        key.set_contents_from_string(data, 
-                                     reduced_redundancy=reduced_redundancy)
+        args = self._upload_args(**kwargs)
+        key.set_contents_from_string(data, **args)
         
-    def upload_file(self, name, filename, reduced_redundancy=True):
+    def upload_file(self, name, filename, **kwargs
+                    ):
         """Upload data from file
         
         """
         key = Key(self.bucket, name)
-        key.set_contents_from_filename(filename, 
-                                       reduced_redundancy=reduced_redundancy)
+        args = self._upload_args(**kwargs)
+        key.set_contents_from_filename(filename, **args)
+        
     def remove(self, name):
         """Remove file
         

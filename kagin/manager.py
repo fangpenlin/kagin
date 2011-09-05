@@ -2,6 +2,7 @@ import os
 import logging
 import shutil
 import json
+import datetime
 
 from kagin.minify import FileConfig, Builder
 from kagin.hash import HashFile
@@ -24,12 +25,7 @@ class KaginManager(object):
         self.output_dir = self.config['output_dir']
         
         s_cfg = self.config['storage']
-        self.storage = S3Storage(
-            url_prefix=s_cfg['url_prefix'],
-            bucket_name=s_cfg['bucket_name'],
-            access_key=s_cfg['access_key'],
-            secret_key=s_cfg['secret_key']
-        )
+        self.storage = S3Storage(**s_cfg)
         
         # read file map
         self.file_map
@@ -147,18 +143,19 @@ class KaginManager(object):
             
         self.logger.info('Finish building.')
             
-    def upload(self, overwire_css=True):
+    def upload(self, overwire_all=False, overwire_css=True):
         self.logger.info('Getting name list from storage ...')
         names = self.storage.get_names()
         self.logger.info('Got %s file names', len(names))
         self.logger.debug('Names: %r', names)
+        
         for root, _, filenames in os.walk(self.hash_output_dir):
             for filename in filenames:
                 _, ext = os.path.splitext(filename)
                 force_upload = False
                 if ext.lower() == '.css' and overwire_css:
                     force_upload = True
-                if filename in names and not force_upload:
+                if filename in names and not force_upload and not overwire_all:
                     self.logger.info('%s already exists, skipped', filename)
                     continue
                 file_path = os.path.join(root, filename)
