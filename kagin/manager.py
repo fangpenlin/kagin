@@ -98,28 +98,30 @@ class KaginManager(object):
         self.file_map = self.hash_file.run_hashing()
         self.hash_file.run_linking(self.file_map, self.route_hashed_url)
         
-    def route_hashed_url(self, name):
+    def route_hashed_url(self, name, https=False):
         """Generate URL for hashed filename in storage
         
         """
-        return self.storage.route_url(name)
+        return self.storage.route_url(name, https=https)
     
-    def route_rel_url(self, path):
+    def route_rel_url(self, path, https=False):
         """Generate URL for relative URL in storage  
         
         """
         hashed = self.file_map.get(path)
         if not hashed:
             return
-        return self.route_hashed_url(hashed)
+        return self.route_hashed_url(hashed, https=https)
     
-    def get_js_group_urls(self, filenames):
+    def get_js_group_urls(self, filenames, https=False):
         """Get minfiy group URLs
         
         """
         minified = self.js_config.include_files(filenames)
         minified = [name + self.mini_js_ext for name in minified]
-        return map(self.route_rel_url, minified)
+        def get_url(name):
+            return self.route_rel_url(name, https=https)
+        return map(get_url, minified)
     
     def get_css_group_urls(self, filenames):
         """Get minfiy group URLs

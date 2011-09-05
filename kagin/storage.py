@@ -11,7 +11,8 @@ class S3Storage(object):
     
     def __init__(
         self, 
-        url_prefix, 
+        http_url_prefix, 
+        https_url_prefix,
         bucket_name, 
         access_key, 
         secret_key, 
@@ -22,7 +23,8 @@ class S3Storage(object):
         if self.logger is None:
             self.logger = logging.getLogger(__name__)
         # TODO: add location support here
-        self.url_prefix = url_prefix
+        self.http_url_prefix = http_url_prefix
+        self.https_url_prefix = https_url_prefix
         self.access_key= access_key
         self.secret_key= secret_key
         self.bucket_name= bucket_name
@@ -42,11 +44,14 @@ class S3Storage(object):
         self._bucket = self.conn.create_bucket(self.bucket_name)
         return self._bucket
         
-    def route_url(self, name):
+    def route_url(self, name, https=False):
         """Get URL of object in storage by name
         
         """
-        return urlparse.urljoin(self.url_prefix, name)
+        url_prefix = self.http_url_prefix
+        if https:
+            url_prefix = self.https_url_prefix
+        return urlparse.urljoin(url_prefix, name)
         
     def exist(self, name):
         """Check does a file exist on the storage
