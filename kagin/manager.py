@@ -116,6 +116,13 @@ class KaginManager(object):
             return
         return self.route_hashed_url(hashed, https=https)
     
+    def route_path(self, path):
+        """Generate relative URL
+        
+        """
+        hashed = self.file_map.get(path)
+        return hashed
+    
     def get_js_group_urls(self, filenames, https=False):
         """Get minfiy group URLs
         
