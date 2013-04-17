@@ -133,13 +133,15 @@ class KaginManager(object):
             return self.route_rel_url(name, https=https)
         return map(get_url, minified)
     
-    def get_css_group_urls(self, filenames):
+    def get_css_group_urls(self, filenames, https=False):
         """Get minfiy group URLs
         
         """
         minified = self.css_config.include_files(filenames)
         minified = [name + self.mini_css_ext for name in minified]
-        return map(self.route_rel_url, minified)
+        def get_url(name):
+            return self.route_rel_url(name, https=https)
+        return map(get_url, minified)
     
     def build(self):
         """Perform processes
