@@ -1,0 +1,3 @@
+include *.jar distribute_setup.py
+recursive-include kagin *.jar
+prune env
