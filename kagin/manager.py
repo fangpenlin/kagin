@@ -2,17 +2,17 @@ import os
 import logging
 import shutil
 import json
-import datetime
 
 from kagin.minify import FileConfig, Builder
 from kagin.hash import HashFile
 from storage import S3Storage
 
+
 class KaginManager(object):
     def __init__(self, config, logger=None):
         self.logger = logger
         if self.logger is None:
-            self.logger  = logging.getLogger(__name__)
+            self.logger = logging.getLogger(__name__)
         self.file_map = None
         #: configuration of Kargin manager
         self.config = config
@@ -39,19 +39,22 @@ class KaginManager(object):
         
         self.mini_js_ext = '.mini.js'
         self.mini_css_ext = '.mini.css'
+        self.gzip_ext = '.gzip'
         # init JS groups
         self.js_config = FileConfig(self.input_dir)
         for group in self.config['js_groups']:
             name = group['name']
             files = group['files']
-            self.js_config.add_group(name, files)
+            gzip = group.get('gzip', True)
+            self.js_config.add_group(name, files, gzip)
             
         # init CSS groups
         self.css_config = FileConfig(self.input_dir)
         for group in self.config['css_groups']:
             name = group['name']
             files = group['files']
-            self.css_config.add_group(name, files)
+            gzip = group.get('gzip', True)
+            self.css_config.add_group(name, files, gzip)
             
         self.hash_file = HashFile(self.hash_input_dir, self.hash_output_dir)
         
@@ -100,6 +103,33 @@ class KaginManager(object):
             route_func = self.route_hashed_url
         self.file_map = self.hash_file.run_hashing()
         self.hash_file.run_linking(self.file_map, route_func)
+
+    def _gzip_group(self, group_cfg, ext):
+        import gzip as gziplib
+        for name, group in group_cfg.groups.iteritems():
+            gzip = group['gzip']
+            if not gzip:
+                continue
+            filename = name + ext 
+            hashed_name = self.file_map[filename]
+            self.logger.info(
+                'Compressing JS group %s (%s) ...',
+                filename, hashed_name
+            )
+            hashed_path = os.path.join(self.hash_output_dir, hashed_name)
+            with open(hashed_path, 'rb') as f:
+                content = f.read()
+            hashed_name_base, hashed_ext = os.path.splitext(hashed_name)
+            gzip_filename = hashed_name_base + self.gzip_ext + hashed_ext
+            gzip_path = os.path.join(self.hash_output_dir, gzip_filename)
+            with gziplib.open(gzip_path, 'wb') as f:
+                f.write(content)
+            self.logger.info('Compressed to %s', gzip_filename)
+            self.file_map[filename] = gzip_filename
+
+    def do_gzip(self):
+        self._gzip_group(self.js_config, self.mini_js_ext)
+        self._gzip_group(self.css_config, self.mini_css_ext)
         
     def route_hashed_url(self, name, https=False):
         """Generate URL for hashed filename in storage
@@ -129,6 +159,7 @@ class KaginManager(object):
         """
         minified = self.js_config.include_files(filenames)
         minified = [name + self.mini_js_ext for name in minified]
+
         def get_url(name):
             return self.route_rel_url(name, https=https)
         return map(get_url, minified)
@@ -139,6 +170,7 @@ class KaginManager(object):
         """
         minified = self.css_config.include_files(filenames)
         minified = [name + self.mini_css_ext for name in minified]
+
         def get_url(name):
             return self.route_rel_url(name, https=https)
         return map(get_url, minified)
@@ -151,6 +183,7 @@ class KaginManager(object):
         self.copy_files(self.input_dir, self.hash_input_dir)
         self.copy_files(self.minify_dir, self.hash_input_dir)
         self.do_hash()
+        self.do_gzip()
         
         with open(self.config['file_map'], 'wt') as file:
             json.dump(self.file_map, file)
@@ -174,5 +207,10 @@ class KaginManager(object):
                     continue
                 file_path = os.path.join(root, filename)
                 self.logger.info('Uploading %s ...', filename)
-                self.storage.upload_file(filename, file_path)
+
+                # TODO: use a better approach to determine gziped file
+                if self.gzip_ext in file_path:
+                    self.storage.upload_file(filename, file_path, content_encoding='gzip')
+                else:
+                    self.storage.upload_file(filename, file_path)
         self.logger.info('Finish uploading.')

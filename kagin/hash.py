@@ -7,6 +7,7 @@ import urlparse
 from kagin.link_css import replace_css_links
 from kagin.utils import url_path
 
+
 class HashFile(object):
     """This object hashes content files and output files with hash file name,
     and generate a file map
@@ -118,9 +119,3 @@ class HashFile(object):
                 output = replace_css_links(css_content, map_func, self.logger)
                 with open(output_filename, 'wt') as file:
                     file.write(output)
-                
-if __name__ == '__main__':
-    logging.basicConfig(level=logging.INFO)
-    h = HashFile('..\\input', '..\\output')
-    file_map = h.run_hashing()
-    h.run_linking(file_map, 'http://cdn.s3.now.in')

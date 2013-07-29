@@ -1,5 +1,6 @@
 import os
 
+
 def url_path(path, base):
     """Ensure the path to be URL-style path
     

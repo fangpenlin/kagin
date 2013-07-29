@@ -5,6 +5,7 @@ import urlparse
 
 from kagin.link_css import replace_css_links
 
+
 class FileConfig(object):
     """Group of files to be minified and compacted together
     
@@ -21,12 +22,15 @@ class FileConfig(object):
         #: map from filename to group name
         self.filename_map = {}
         
-    def add_group(self, name, filenames):
+    def add_group(self, name, filenames, gzip=True):
         """Add file group
         
         """
         assert name not in self.groups 
-        self.groups[name] = filenames
+        self.groups[name] = dict(
+            filenames=filenames,
+            gzip=gzip
+        )
         for filename in filenames:
             self.filename_map[filename] = name
         
@@ -39,7 +43,8 @@ class FileConfig(object):
             group_name = self.filename_map[filename]
             groups.add(group_name)
         return groups
-    
+
+
 class Builder(object):
     """Builder builds CSS or JS file groups into minified files
     
@@ -106,7 +111,9 @@ class Builder(object):
             file.write(file_content)
         
     def build(self, file_config, ext):
-        for name, filenames in file_config.groups.iteritems():
+        for name, group in file_config.groups.iteritems():
+            filenames = group['filenames']
+
             output_filename = os.path.join(self.output_dir, name + ext)
             input_files = [os.path.join(file_config.input_dir, name) 
                            for name in filenames]

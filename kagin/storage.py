@@ -4,6 +4,7 @@ import logging
 from boto.s3.connection import S3Connection
 from boto.s3.key import Key
 
+
 class S3Storage(object):
     """Amazon s3 storage
     
@@ -25,9 +26,9 @@ class S3Storage(object):
         # TODO: add location support here
         self.http_url_prefix = http_url_prefix
         self.https_url_prefix = https_url_prefix
-        self.access_key= access_key
-        self.secret_key= secret_key
-        self.bucket_name= bucket_name
+        self.access_key = access_key
+        self.secret_key = secret_key
+        self.bucket_name = bucket_name
         self.default_headers = default_headers
         
     @property
@@ -68,6 +69,7 @@ class S3Storage(object):
     def _upload_args(
         self, 
         content_type=None,
+        content_encoding=None,
         cache_control=None,
         expires=None, 
         reduced_redundancy=True
@@ -86,6 +88,8 @@ class S3Storage(object):
             headers['Content-Type'] = content_type
         if cache_control:
             headers['Cache-Control'] = cache_control
+        if content_encoding:
+            headers['Content-Encoding'] = content_encoding
         return dict(headers=headers, reduced_redundancy=reduced_redundancy)
         
     def upload(self, name, data, **kwargs):
