@@ -56,7 +56,11 @@ class KaginManager(object):
             gzip = group.get('gzip', True)
             self.css_config.add_group(name, files, gzip)
             
-        self.hash_file = HashFile(self.hash_input_dir, self.hash_output_dir)
+        self.hash_file = HashFile(
+            self.hash_input_dir, 
+            self.hash_output_dir,
+            hash_version=self.config.get('hash_version', '')
+        )
         
     def read_file_map(self):
         self.file_map = {}

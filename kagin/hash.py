@@ -19,8 +19,9 @@ class HashFile(object):
         input_dir, 
         output_dir, 
         hash_type=hashlib.md5, 
+        hash_version='',
         exclude_files=None, 
-        logger=None
+        logger=None,
     ):
         self.logger = logger
         if self.logger is None:
@@ -33,13 +34,15 @@ class HashFile(object):
         self.hash_type = hash_type
         #: list of filename patterns to ignore
         self.exclude_files = exclude_files
+        #: the version string for generating different hash name
+        self.hash_version = hash_version
         
     def compute_hash(self, filename):
         """Compute hash value of a file
         
         """
         import mmap
-        hash = self.hash_type()
+        hash = self.hash_type(self.hash_version)
         if not os.path.getsize(filename):
             return hash.hexdigest()
         chunk_size = 4096
